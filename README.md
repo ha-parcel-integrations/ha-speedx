@@ -43,7 +43,7 @@ Part of the [ha-parcel-integrations](https://github.com/ha-parcel-integrations) 
 
 ## Requirements
 
-- Home Assistant 2024.7 or newer
+- Home Assistant 2024.12 or newer
 - A SpeedX parcel and its tracking code (from the shipping
   confirmation email or the missed-delivery card) — no account needed
 
@@ -95,6 +95,10 @@ Standard HA removal applies: **Settings → Devices & Services → SpeedX → �
 | `sensor.speedx_last_successful_update` | Diagnostic: when SpeedX was last polled successfully |
 
 A delivered parcel moves from its per-parcel sensor to the delivered sensor automatically.
+
+A **`button.speedx_refresh`** entity triggers an immediate poll outside the
+regular interval, and a **`calendar.speedx_deliveries`** entity shows expected
+delivery dates for active parcels — read-only, no extra API calls.
 
 ## Parcel status reference
 
