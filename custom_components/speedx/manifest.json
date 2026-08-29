@@ -1,0 +1,16 @@
+{
+  "domain": "speedx",
+  "name": "SpeedX",
+  "codeowners": [
+    "@peternijssen"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/ha-parcel-integrations/ha-speedx",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/ha-parcel-integrations/ha-speedx/issues",
+  "quality_scale": "silver",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.9.0"
+}
