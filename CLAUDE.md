@@ -35,6 +35,13 @@ you act in one of these areas:
 
 ## Carrier-specific notes
 
+**No `awaiting_pickup` sensor yet — unconfirmed, not structural.** No
+pickup-point status/code has been observed for SpeedX; `status_vocab` is only
+`partial` in carrier-research's `speedx.md`, and `pickup`/`pickup_point`
+stay `False`/`None` in `parcels.py`. That is "unseen so far," not "cannot
+happen" — revisit once a real parcel or a fuller code capture settles it.
+See `.github/CONVENTIONS.md`'s pickup-point convention.
+
 SpeedX uses anonymous, direct HTTP consumer tracking; no credentials or browser
 automation are used. A refresh requests the JSON current scan and then the
 server-rendered history page. The SSR history is authoritative; a valid JSON
