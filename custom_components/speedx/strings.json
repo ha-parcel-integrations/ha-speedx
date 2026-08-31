@@ -16,7 +16,7 @@
       "init": {
         "title": "SpeedX options",
         "menu_options": {
-          "parcels": "Parcels",
+          "parcels": "Manage parcels",
           "settings": "Settings"
         },
         "sections": {
@@ -63,7 +63,7 @@
         "data": {
           "delivered_filter_type": "Delivered parcels: filter by",
           "delivered_filter_amount": "Delivered parcels: amount",
-          "include_history": "Include parcel history"
+          "include_history": "Include status history"
         }
       }
     },

@@ -16,7 +16,7 @@
       "init": {
         "title": "SpeedX-opties",
         "menu_options": {
-          "parcels": "Pakketten",
+          "parcels": "Pakketten beheren",
           "settings": "Instellingen"
         },
         "sections": {
@@ -47,7 +47,7 @@
               "include_history": "Statusgeschiedenis toevoegen"
             },
             "data_description": {
-              "include_history": "Voegt per pakket een history-attribuut toe met elke statusupdate (tijdstip, status, originele tekst). Standaard uit."
+              "include_history": "Voegt per pakket een geschiedenisattribuut toe met elke statusupdate (tijdstip, status, oorspronkelijke tekst). Standaard uit."
             }
           }
         }
@@ -63,7 +63,7 @@
         "data": {
           "delivered_filter_type": "Bezorgde pakketten: filteren op",
           "delivered_filter_amount": "Bezorgde pakketten: aantal",
-          "include_history": "Pakketgeschiedenis toevoegen"
+          "include_history": "Statusgeschiedenis toevoegen"
         }
       }
     },
