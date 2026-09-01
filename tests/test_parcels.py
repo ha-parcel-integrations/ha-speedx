@@ -28,6 +28,7 @@ def test_observed_status_map():
     assert map_parcel_status("50001") is ParcelStatus.REGISTERED
     assert map_parcel_status("57201") is ParcelStatus.DELIVERED
     assert map_parcel_status("57609") is ParcelStatus.PROBLEM
+    assert map_parcel_status("59116") is ParcelStatus.PROBLEM
     assert map_parcel_status("LAST_MILE_UNDELIVERED") is ParcelStatus.PROBLEM
     assert map_parcel_status("57406") is ParcelStatus.UNKNOWN
     assert map_parcel_status("unseen") is ParcelStatus.UNKNOWN
@@ -110,20 +111,33 @@ def test_unknown_shapes_and_categories_degrade_without_pii():
     assert unknown["status"] is ParcelStatus.UNKNOWN
 
 
-def test_timestamp_shape_warns_once_on_partial_or_aware_wall_time(caplog):
+def test_timestamp_shape_warns_once_on_partial_or_unparseable_wall_time(caplog):
     caplog.set_level("WARNING")
     partial = event("57201", "2026-04-29T13:12:42", "LAST_MILE_DELIVERED")
     del partial["timeZone"]
     assert build_history([partial])[0]["timestamp"] is None
 
-    aware = event("57201", "2026-04-29T13:12:42+00:00", "LAST_MILE_DELIVERED")
-    assert build_history([aware])[0]["timestamp"] is None
+    unparseable = event("57201", "not-a-timestamp", "LAST_MILE_DELIVERED")
+    assert build_history([unparseable])[0]["timestamp"] is None
 
     shape_warnings = [r for r in caplog.records if "localTs/timeZone" in r.message]
     assert len(shape_warnings) == 1
     for record in caplog.records:
         assert "Invented City" not in record.message
         assert "00000" not in record.message
+
+
+def test_offset_bearing_local_ts_is_trusted_as_is(caplog):
+    """Live-confirmed 2026-09-01: localTs normally already carries its own UTC
+    offset (e.g. '-04:00' for America/New_York in July), redundant with
+    timeZone rather than a naive wall-clock string. That is not a shape error
+    — it is the ordinary payload, so no warning fires and it is used as-is."""
+    caplog.set_level("WARNING")
+    aware = event("59116", "2026-07-12T07:48:09-04:00", "LAST_MILE_UNDELIVERED")
+    aware["timeZone"] = "America/New_York"
+    history = build_history([aware])
+    assert history[0]["timestamp"] == "2026-07-12T07:48:09-04:00"
+    assert not [r for r in caplog.records if "localTs/timeZone" in r.message]
 
 
 def test_event_with_no_time_fields_at_all_is_silent():

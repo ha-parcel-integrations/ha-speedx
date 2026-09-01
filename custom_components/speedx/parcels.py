@@ -63,6 +63,10 @@ _STATUS_MAP: dict[str, ParcelStatus] = {
     "57112": ParcelStatus.IN_TRANSIT, "57113": ParcelStatus.IN_TRANSIT,
     "57201": ParcelStatus.DELIVERED, "57609": ParcelStatus.PROBLEM,
     "57406": ParcelStatus.UNKNOWN,
+    # "Parcel Disposal" — the terminal event on a parcel whose SSR history
+    # ends Attempted Delivery: Invalid Address (x3) -> Parcel Disposal. No
+    # sender-return movement is shown, so this is a dead end, not a return.
+    "59116": ParcelStatus.PROBLEM,
 }
 
 # Keys already warned about, so each unconfirmed shape is logged only once
@@ -222,10 +226,15 @@ def format_dimensions(
 def _event_timestamp(event: dict) -> str | None:
     """Return an aware ISO timestamp from a local wall time and IANA zone.
 
-    A bad/missing IANA zone or wall-time form never fabricates a UTC
-    timestamp — it warns once and yields no timestamp instead. An event that
-    carries neither field at all (a bare current-scan fallback row) is not a
-    shape problem and stays silent.
+    ``localTs`` normally carries its own UTC offset already (confirmed live,
+    2026-09-01: every event on every captured parcel does) — that offset is
+    trusted as-is rather than treated as a shape error, since the carrier is
+    handing over a complete timestamp, not a mistake. Only when ``localTs``
+    is a naive wall-clock string is ``timeZone`` applied to make it aware. A
+    bad/missing IANA zone or an unparseable wall-time form never fabricates a
+    UTC timestamp — it warns once and yields no timestamp instead. An event
+    that carries neither field at all (a bare current-scan fallback row) is
+    not a shape problem and stays silent.
     """
     local_ts, zone_name = event.get("localTs"), event.get("timeZone")
     if local_ts is None and zone_name is None:
@@ -235,11 +244,14 @@ def _event_timestamp(event: dict) -> str | None:
         return None
     try:
         wall = datetime.fromisoformat(local_ts.replace("Z", "+00:00"))
-        if wall.tzinfo is not None:
-            _warn_timestamp_shape(event)
-            return None
+    except ValueError:
+        _warn_timestamp_shape(event)
+        return None
+    if wall.tzinfo is not None:
+        return wall.isoformat()
+    try:
         zone = ZoneInfo(zone_name)
-    except (ValueError, ZoneInfoNotFoundError):
+    except ZoneInfoNotFoundError:
         _warn_timestamp_shape(event)
         return None
     first, second = wall.replace(tzinfo=zone, fold=0), wall.replace(tzinfo=zone, fold=1)
