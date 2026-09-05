@@ -70,8 +70,7 @@ CAPABILITIES = frozenset({"url", "history"})
 # ``TRACKING_API_URL`` is the consumer tracking endpoint the integration polls
 # (JSON current scan, no auth); ``TRACKING_URL`` is both the SSR history page
 # the client fetches and the human-facing deep link surfaced on each parcel's
-# ``url`` field. Mechanics (rate limits, not-found shape) live in this
-# carrier's own directory under the private ``carrier-research/api/``.
+# ``url`` field.
 TRACKING_API_URL = "https://tracking.speedx.io/api/tracks"
 TRACKING_URL = "https://tracking.speedx.io/{tracking_code}"
 
