@@ -27,10 +27,15 @@ async def test_diagnostics_redacts_and_counts(hass):
         }
     ]
     entry.runtime_data.coordinator.delivered = []
+    entry.runtime_data.coordinator.delivered_codes = set()
 
     result = await async_get_config_entry_diagnostics(hass, entry)
 
-    assert result["counts"] == {"incoming_active": 1, "delivered": 0}
+    assert result["counts"] == {
+        "incoming_active": 1,
+        "delivered": 0,
+        "skipped_from_fetch": 0,
+    }
     assert result["polling"] == {
         "tier_minutes": 15,
         "update_interval_seconds": 900.0,
@@ -54,6 +59,7 @@ async def test_diagnostics_reports_suspended_polling(hass):
     entry.runtime_data.coordinator.update_interval = None
     entry.runtime_data.coordinator.data = []
     entry.runtime_data.coordinator.delivered = []
+    entry.runtime_data.coordinator.delivered_codes = set()
 
     result = await async_get_config_entry_diagnostics(hass, entry)
 
