@@ -50,6 +50,10 @@ KNOWN_CAPABILITIES = frozenset(
 #   "history"            the include_history option is implemented and does something
 CAPABILITIES = frozenset({"url", "history"})
 
+# Fields not confirmed yet — the docs site shows them as "awaiting data".
+# Move a field into the declaration above once a real parcel shows it.
+PENDING_CAPABILITIES = frozenset({"delivery_window"})
+
 # If this carrier ever grows a second backend with a genuinely different
 # payload shape (a country-specific API, not just a config option) — the way
 # ha-dpd's Germany SOAP stack or ha-gls's per-country transports did — replace
