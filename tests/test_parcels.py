@@ -188,3 +188,12 @@ def test_no_edd_field_never_warns(caplog):
     caplog.set_level("WARNING")
     normalize_parcel(active_sample())
     assert not any("edd" in r.message.lower() for r in caplog.records)
+
+
+def test_live_confirmed_event_codes_map(caplog):
+    """The 2026-10-17 sweep's seven new codes, each from its own event text."""
+    assert map_parcel_status("50002") == ParcelStatus.IN_TRANSIT
+    assert map_parcel_status("57409") == ParcelStatus.IN_TRANSIT
+    for code in ("57413", "57504", "57607", "57614", "57645"):
+        assert map_parcel_status(code) == ParcelStatus.PROBLEM
+    assert "Unrecognised" not in caplog.text

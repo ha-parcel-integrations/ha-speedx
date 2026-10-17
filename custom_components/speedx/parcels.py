@@ -63,6 +63,16 @@ _STATUS_MAP: dict[str, ParcelStatus] = {
     "57112": ParcelStatus.IN_TRANSIT, "57113": ParcelStatus.IN_TRANSIT,
     "57201": ParcelStatus.DELIVERED, "57609": ParcelStatus.PROBLEM,
     "57406": ParcelStatus.UNKNOWN,
+    # Confirmed live 2026-10-17, each by its own event text. A delay is still
+    # movement, matching the rest of the suite; a failed attempt, a void
+    # parcel and a parcel missing at the sort facility are not.
+    "50002": ParcelStatus.IN_TRANSIT,  # in transit to SpeedX
+    "57409": ParcelStatus.IN_TRANSIT,  # delay in transit
+    "57413": ParcelStatus.PROBLEM,  # parcel void
+    "57504": ParcelStatus.PROBLEM,  # not found at the sort facility
+    "57607": ParcelStatus.PROBLEM,  # attempted: building closed
+    "57614": ParcelStatus.PROBLEM,  # attempted: no access
+    "57645": ParcelStatus.PROBLEM,  # attempted: vehicle breakdown
     # "Parcel Disposal" — the terminal event on a parcel whose SSR history
     # ends Attempted Delivery: Invalid Address (x3) -> Parcel Disposal. No
     # sender-return movement is shown, so this is a dead end, not a return.
