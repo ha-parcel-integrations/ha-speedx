@@ -14,7 +14,8 @@ shapes — is suite-wide machinery and should be left alone.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from collections.abc import Mapping
+from datetime import datetime, timedelta, timezone, tzinfo
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -233,7 +234,35 @@ def format_dimensions(
     }
 
 
-def _event_timestamp(event: dict) -> str | None:
+def _resolve_zone(
+    name: str, zones: Mapping[str, tzinfo | None] | None
+) -> tzinfo | None:
+    """Return the zone for ``name``, or ``None`` when it is unknown.
+
+    The coordinator resolves zones off the event loop and passes them in;
+    ``zones=None`` (direct callers, tests) falls back to ``ZoneInfo``.
+    """
+    if zones is not None:
+        return zones.get(name)
+    try:
+        return ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError):
+        return None
+
+
+def zone_names(raw: dict) -> set[str]:
+    """Return the IANA zone names a parcel's events carry, for the coordinator to resolve."""
+    names: set[str] = set()
+    events = raw.get("events")
+    for event in events if isinstance(events, list) else []:
+        if isinstance(event, dict) and isinstance(event.get("timeZone"), str):
+            names.add(event["timeZone"])
+    return names
+
+
+def _event_timestamp(
+    event: dict, zones: Mapping[str, tzinfo | None] | None = None
+) -> str | None:
     """Return an aware ISO timestamp from a local wall time and IANA zone.
 
     ``localTs`` normally carries its own UTC offset already (confirmed live,
@@ -259,9 +288,8 @@ def _event_timestamp(event: dict) -> str | None:
         return None
     if wall.tzinfo is not None:
         return wall.isoformat()
-    try:
-        zone = ZoneInfo(zone_name)
-    except ZoneInfoNotFoundError:
+    zone = _resolve_zone(zone_name, zones)
+    if zone is None:
         _warn_timestamp_shape(event)
         return None
     first, second = wall.replace(tzinfo=zone, fold=0), wall.replace(tzinfo=zone, fold=1)
@@ -280,7 +308,12 @@ def _event_status(event: dict) -> ParcelStatus | None:
     return map_event_status(str(category or event.get("eventCode") or "") or None)
 
 
-def build_history(events: list | None, *, max_events: int = HISTORY_MAX_EVENTS) -> list[dict]:
+def build_history(
+    events: list | None,
+    *,
+    max_events: int = HISTORY_MAX_EVENTS,
+    zones: Mapping[str, tzinfo | None] | None = None,
+) -> list[dict]:
     """Build the canonical ``history`` list from the carrier's event list.
 
     Each entry is ``{timestamp, status, raw_status}`` — identical across all
@@ -302,7 +335,7 @@ def build_history(events: list | None, *, max_events: int = HISTORY_MAX_EVENTS) 
     # Carrier SSR history is newest-first; reverse to the canonical order.
     history: list[dict] = []
     for event in reversed(unique):
-        timestamp = _event_timestamp(event)
+        timestamp = _event_timestamp(event, zones)
         entry = {
             "timestamp": timestamp,
             "status": _event_status(event),
@@ -319,7 +352,12 @@ def tracking_url(tracking_code: str | None) -> str | None:
     return TRACKING_URL.format(tracking_code=tracking_code)
 
 
-def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
+def normalize_parcel(
+    raw: dict,
+    *,
+    include_history: bool = False,
+    zones: Mapping[str, tzinfo | None] | None = None,
+) -> dict:
     """Return a carrier-agnostic parcel dict with the payload under ``raw``.
 
     The **keys of the returned dict are the contract**: every carrier in the
@@ -345,7 +383,7 @@ def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
     status = _event_status(newest) or ParcelStatus.UNKNOWN
     delivered = status is ParcelStatus.DELIVERED
 
-    delivered_at = _event_timestamp(newest) if status is ParcelStatus.DELIVERED else None
+    delivered_at = _event_timestamp(newest, zones) if status is ParcelStatus.DELIVERED else None
 
     current = raw.get("current") if isinstance(raw.get("current"), dict) else None
     if raw.get("source") == "ssr" and current is not None:
@@ -373,7 +411,7 @@ def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
         "url": tracking_url(tracking_code),
         "weight": None,
         "dimensions": None,
-        "history": build_history(events) if include_history else None,
+        "history": build_history(events, zones=zones) if include_history else None,
         "raw": {key: newest[key] for key in ("eventCode", "category") if key in newest},
     }
 

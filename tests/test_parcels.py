@@ -197,3 +197,21 @@ def test_live_confirmed_event_codes_map(caplog):
     for code in ("57413", "57504", "57607", "57614", "57645"):
         assert map_parcel_status(code) == ParcelStatus.PROBLEM
     assert "Unrecognised" not in caplog.text
+
+
+def test_zone_names_lists_every_event_zone():
+    from custom_components.speedx.parcels import zone_names
+
+    raw = {"events": [{"timeZone": "Europe/Amsterdam"}, {"timeZone": None}, "x"]}
+    assert zone_names(raw) == {"Europe/Amsterdam"}
+
+
+def test_event_timestamp_uses_the_zones_the_coordinator_resolved():
+    from zoneinfo import ZoneInfo
+
+    from custom_components.speedx.parcels import _event_timestamp
+
+    event_ = {"localTs": "2026-01-02T10:00:00", "timeZone": "Europe/Amsterdam"}
+    zones = {"Europe/Amsterdam": ZoneInfo("Europe/Amsterdam")}
+    assert _event_timestamp(event_, zones) == "2026-01-02T10:00:00+01:00"
+    assert _event_timestamp(event_, {"Europe/Amsterdam": None}) is None
