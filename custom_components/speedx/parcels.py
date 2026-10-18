@@ -245,6 +245,7 @@ def _resolve_zone(
     if zones is not None:
         return zones.get(name)
     try:
+        # suite: allow zoneinfo (only when the caller passes no zones; the coordinator does)
         return ZoneInfo(name)
     except (ZoneInfoNotFoundError, ValueError):
         return None
