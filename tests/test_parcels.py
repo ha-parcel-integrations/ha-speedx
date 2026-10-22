@@ -1,8 +1,12 @@
 """Privacy-safe SpeedX canonical mapping tests."""
+
+from zoneinfo import ZoneInfo
+
 import pytest
 
 from custom_components.speedx.const import CAPABILITIES, ParcelStatus
 from custom_components.speedx.parcels import (
+    _event_timestamp,
     _warned,
     build_history,
     format_dimensions,
@@ -11,6 +15,7 @@ from custom_components.speedx.parcels import (
     normalize_parcel,
     to_iso_timestamp,
     tracking_url,
+    zone_names,
 )
 
 from .payloads import active_sample, delivered_sample, event
@@ -72,16 +77,20 @@ def test_ssr_history_is_reversed_and_only_exact_duplicates_collapse():
     events = active_sample()["events"]
     duplicate = dict(events[0])
     repeated = event("57113", "2026-04-28T18:00:00", "LAST_MILE_ENROUTE")
-    history = build_history(events + [duplicate, repeated])
+    history = build_history([*events, duplicate, repeated])
     assert len(history) == 4
     assert history[0]["raw_status"] == "57113"
     assert history[-1]["raw_status"] == "57113"
 
 
 def test_iana_timestamp_and_dst_fail_safely():
-    normal = build_history([event("57201", "2026-04-29T13:12:42", "LAST_MILE_DELIVERED")])
+    normal = build_history(
+        [event("57201", "2026-04-29T13:12:42", "LAST_MILE_DELIVERED")]
+    )
     assert normal[0]["timestamp"].endswith("-04:00")
-    ambiguous = build_history([event("57201", "2026-11-01T01:30:00", "LAST_MILE_DELIVERED")])
+    ambiguous = build_history(
+        [event("57201", "2026-11-01T01:30:00", "LAST_MILE_DELIVERED")]
+    )
     assert ambiguous[0]["timestamp"] is None
     invalid_zone = event("57201", "2026-04-29T13:12:42", "LAST_MILE_DELIVERED")
     invalid_zone["timeZone"] = "Not/AZone"
@@ -97,7 +106,7 @@ def test_normalization_uses_category_and_redacts_carrier_pii():
     assert parcel["raw"] == {"eventCode": "57201", "category": "LAST_MILE_DELIVERED"}
     assert "location" not in str(parcel)
     assert "Invented City" not in str(parcel)
-    assert CAPABILITIES == frozenset({"url", "history"})
+    assert frozenset({"url", "history"}) == CAPABILITIES
 
 
 def test_out_for_delivery_description_promotes_enroute_category():
@@ -107,7 +116,12 @@ def test_out_for_delivery_description_promotes_enroute_category():
 
 def test_unknown_shapes_and_categories_degrade_without_pii():
     assert build_history(["bad", {"eventCode": "new"}])[-1]["timestamp"] is None
-    unknown = normalize_parcel({"trackingNumber": "SPXTEST999999", "events": [event("99999", "2026-04-29T13:12:42", "NEW")]})
+    unknown = normalize_parcel(
+        {
+            "trackingNumber": "SPXTEST999999",
+            "events": [event("99999", "2026-04-29T13:12:42", "NEW")],
+        }
+    )
     assert unknown["status"] is ParcelStatus.UNKNOWN
 
 
@@ -141,14 +155,24 @@ def test_offset_bearing_local_ts_is_trusted_as_is(caplog):
 
 
 def test_event_with_no_time_fields_at_all_is_silent():
-    assert build_history([{"eventCode": "57201", "category": "LAST_MILE_DELIVERED"}])[0]["timestamp"] is None
+    assert (
+        build_history([{"eventCode": "57201", "category": "LAST_MILE_DELIVERED"}])[0][
+            "timestamp"
+        ]
+        is None
+    )
 
 
 def test_status_disagreement_warns_once_and_keeps_ssr_status(caplog):
     caplog.set_level("WARNING")
     current = event("57201", "2026-04-29T13:12:42", "LAST_MILE_DELIVERED")
     ssr_events = [event("57113", "2026-04-28T15:52:17", "LAST_MILE_ENROUTE")]
-    raw = {"trackingNumber": "SPXTEST000001", "events": ssr_events, "current": current, "source": "ssr"}
+    raw = {
+        "trackingNumber": "SPXTEST000001",
+        "events": ssr_events,
+        "current": current,
+        "source": "ssr",
+    }
     parcel = normalize_parcel(raw)
     assert parcel["status"] is ParcelStatus.IN_TRANSIT
     assert any("disagrees" in r.message for r in caplog.records)
@@ -158,7 +182,12 @@ def test_status_agreement_does_not_warn(caplog):
     caplog.set_level("WARNING")
     current = event("57113", "2026-04-28T15:52:17", "LAST_MILE_ENROUTE")
     ssr_events = [event("57113", "2026-04-28T15:52:17", "LAST_MILE_ENROUTE")]
-    raw = {"trackingNumber": "SPXTEST000001", "events": ssr_events, "current": current, "source": "ssr"}
+    raw = {
+        "trackingNumber": "SPXTEST000001",
+        "events": ssr_events,
+        "current": current,
+        "source": "ssr",
+    }
     normalize_parcel(raw)
     assert not any("disagrees" in r.message for r in caplog.records)
 
@@ -166,7 +195,12 @@ def test_status_agreement_does_not_warn(caplog):
 def test_json_source_never_checks_disagreement(caplog):
     caplog.set_level("WARNING")
     current = event("57201", "2026-04-29T13:12:42", "LAST_MILE_DELIVERED")
-    raw = {"trackingNumber": "SPXTEST000001", "events": [current], "current": current, "source": "json"}
+    raw = {
+        "trackingNumber": "SPXTEST000001",
+        "events": [current],
+        "current": current,
+        "source": "json",
+    }
     normalize_parcel(raw)
     assert not any("disagrees" in r.message for r in caplog.records)
 
@@ -175,9 +209,19 @@ def test_edd_presence_warns_once_without_leaking_value(caplog):
     caplog.set_level("WARNING")
     with_edd = event("57113", "2026-04-28T15:52:17", "LAST_MILE_ENROUTE")
     with_edd["edd"] = "2026-04-30"
-    raw = {"trackingNumber": "SPXTEST000001", "events": [with_edd], "current": None, "source": "ssr"}
+    raw = {
+        "trackingNumber": "SPXTEST000001",
+        "events": [with_edd],
+        "current": None,
+        "source": "ssr",
+    }
     normalize_parcel(raw)
-    raw_current = {"trackingNumber": "SPXTEST000001", "events": [event("57113", "2026-04-28T15:52:17", "LAST_MILE_ENROUTE")], "current": with_edd, "source": "ssr"}
+    raw_current = {
+        "trackingNumber": "SPXTEST000001",
+        "events": [event("57113", "2026-04-28T15:52:17", "LAST_MILE_ENROUTE")],
+        "current": with_edd,
+        "source": "ssr",
+    }
     normalize_parcel(raw_current)
     matches = [r for r in caplog.records if "edd" in r.message.lower()]
     assert len(matches) == 1
@@ -200,17 +244,11 @@ def test_live_confirmed_event_codes_map(caplog):
 
 
 def test_zone_names_lists_every_event_zone():
-    from custom_components.speedx.parcels import zone_names
-
     raw = {"events": [{"timeZone": "Europe/Amsterdam"}, {"timeZone": None}, "x"]}
     assert zone_names(raw) == {"Europe/Amsterdam"}
 
 
 def test_event_timestamp_uses_the_zones_the_coordinator_resolved():
-    from zoneinfo import ZoneInfo
-
-    from custom_components.speedx.parcels import _event_timestamp
-
     event_ = {"localTs": "2026-01-02T10:00:00", "timeZone": "Europe/Amsterdam"}
     zones = {"Europe/Amsterdam": ZoneInfo("Europe/Amsterdam")}
     assert _event_timestamp(event_, zones) == "2026-01-02T10:00:00+01:00"

@@ -1,10 +1,11 @@
 """Direct HTTP client for the public SpeedX consumer tracker."""
+
 from __future__ import annotations
 
 import json
 import logging
-import uuid
 from typing import Any
+import uuid
 
 import aiohttp
 
@@ -100,7 +101,11 @@ def _events_from_flight(html: str) -> list[dict[str, Any]] | None:
             pushed = json.loads(chunk)
         except (json.JSONDecodeError, TypeError):
             continue
-        texts = (item for item in pushed if isinstance(item, str)) if isinstance(pushed, list) else ()
+        texts = (
+            (item for item in pushed if isinstance(item, str))
+            if isinstance(pushed, list)
+            else ()
+        )
         for text in texts:
             start = text.find('"events":')
             if start < 0:
@@ -109,7 +114,9 @@ def _events_from_flight(html: str) -> list[dict[str, Any]] | None:
                 value, _ = decoder.raw_decode(text[start + len('"events":') :].lstrip())
             except json.JSONDecodeError:
                 continue
-            if isinstance(value, list) and all(isinstance(event, dict) for event in value):
+            if isinstance(value, list) and all(
+                isinstance(event, dict) for event in value
+            ):
                 return value
     return None
 
@@ -123,35 +130,50 @@ class SpeedXApiClient:
 
     async def _current_scan(self, tracking_code: str) -> dict[str, Any] | None:
         body = {"trackingNumbers": [tracking_code], "visitorId": str(uuid.uuid4())}
-        async with self._session.post(TRACKING_API_URL, json=body, headers={"Accept": "application/json"}) as response:
+        async with self._session.post(
+            TRACKING_API_URL, json=body, headers={"Accept": "application/json"}
+        ) as response:
             if response.status == 429:
                 try:
                     retry_after = float(response.headers.get("Retry-After", ""))
                 except ValueError:
                     retry_after = None
                 _warn_rate_limited(retry_after)
-                raise SpeedXApiError("HTTP 429", status_code=429, retry_after=retry_after)
+                raise SpeedXApiError(
+                    "HTTP 429", status_code=429, retry_after=retry_after
+                )
             if response.status != 200:
-                raise SpeedXApiError(f"HTTP {response.status}", status_code=response.status)
+                raise SpeedXApiError(
+                    f"HTTP {response.status}", status_code=response.status
+                )
             try:
                 payload = await response.json(content_type=None)
             except (ValueError, json.JSONDecodeError) as err:
                 raise SpeedXApiError("unparseable JSON current scan") from err
         if not isinstance(payload, list):
             raise SpeedXApiError("unexpected JSON current-scan shape")
-        return payload[0] if len(payload) == 1 and isinstance(payload[0], dict) else None
+        return (
+            payload[0] if len(payload) == 1 and isinstance(payload[0], dict) else None
+        )
 
     async def _history(self, tracking_code: str) -> list[dict[str, Any]] | None:
-        async with self._session.get(TRACKING_URL.format(tracking_code=tracking_code), headers={"Accept": "text/html"}) as response:
+        async with self._session.get(
+            TRACKING_URL.format(tracking_code=tracking_code),
+            headers={"Accept": "text/html"},
+        ) as response:
             if response.status == 429:
                 try:
                     retry_after = float(response.headers.get("Retry-After", ""))
                 except ValueError:
                     retry_after = None
                 _warn_rate_limited(retry_after)
-                raise SpeedXApiError("HTTP 429", status_code=429, retry_after=retry_after)
+                raise SpeedXApiError(
+                    "HTTP 429", status_code=429, retry_after=retry_after
+                )
             if response.status != 200:
-                raise SpeedXApiError(f"HTTP {response.status}", status_code=response.status)
+                raise SpeedXApiError(
+                    f"HTTP {response.status}", status_code=response.status
+                )
             html = await response.text()
         if "self.__next_f.push(" not in html:
             _warn_rsc_missing()
@@ -166,8 +188,18 @@ class SpeedXApiClient:
         current = await self._current_scan(tracking_code)
         events = await self._history(tracking_code)
         if events:
-            return {"trackingNumber": tracking_code, "events": events, "current": current, "source": "ssr"}
+            return {
+                "trackingNumber": tracking_code,
+                "events": events,
+                "current": current,
+                "source": "ssr",
+            }
         if current:
-            return {"trackingNumber": current.get("trackingNumber") or tracking_code, "events": [current], "current": current, "source": "json"}
+            return {
+                "trackingNumber": current.get("trackingNumber") or tracking_code,
+                "events": [current],
+                "current": current,
+                "source": "json",
+            }
         _warn_empty_data()
         raise SpeedXApiError("empty or undecodable carrier response")

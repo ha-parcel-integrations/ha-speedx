@@ -1,4 +1,5 @@
 """Tests for the SpeedX refresh button."""
+
 from unittest.mock import AsyncMock, MagicMock
 
 from custom_components.speedx.button import SpeedXRefreshButton

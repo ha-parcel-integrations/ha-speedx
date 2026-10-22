@@ -1,4 +1,5 @@
 """Calendar platform for the SpeedX parcel tracker integration."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -20,14 +21,15 @@ PARALLEL_UPDATES = 0
 _DEFAULT_EVENT_DURATION = timedelta(hours=1)
 
 
-
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: SpeedXConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the SpeedX deliveries calendar from a config entry."""
-    async_add_entities([SpeedXDeliveriesCalendar(entry.runtime_data.coordinator, entry)])
+    async_add_entities(
+        [SpeedXDeliveriesCalendar(entry.runtime_data.coordinator, entry)]
+    )
 
 
 class SpeedXDeliveriesCalendar(CoordinatorEntity[SpeedXCoordinator], CalendarEntity):

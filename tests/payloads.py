@@ -1,11 +1,14 @@
 """Invented, privacy-safe SpeedX tracking payloads for tests."""
+
 from __future__ import annotations
 
 ACTIVE_CODE = "SPXTEST000001"
 DELIVERED_CODE = "SPXTEST000002"
 
 
-def event(code: str, local_ts: str, category: str, description: str = "status update") -> dict:
+def event(
+    code: str, local_ts: str, category: str, description: str = "status update"
+) -> dict:
     return {
         "trackingNumber": ACTIVE_CODE,
         "eventCode": code,
@@ -32,6 +35,8 @@ def active_sample(code: str = ACTIVE_CODE) -> dict:
 
 def delivered_sample(code: str = DELIVERED_CODE) -> dict:
     sample = active_sample(code)
-    sample["events"].insert(0, event("57201", "2026-04-29T13:12:42", "LAST_MILE_DELIVERED"))
+    sample["events"].insert(
+        0, event("57201", "2026-04-29T13:12:42", "LAST_MILE_DELIVERED")
+    )
     sample["events"][0]["trackingNumber"] = code
     return sample

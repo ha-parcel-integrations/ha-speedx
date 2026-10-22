@@ -11,11 +11,12 @@ here. Everything else — the timestamp parsing, the history builder, the sort
 contract, the delivered filter, the one-shot warnings for unmapped/unconfirmed
 shapes — is suite-wide machinery and should be left alone.
 """
+
 from __future__ import annotations
 
-import logging
 from collections.abc import Mapping
-from datetime import datetime, timedelta, timezone, tzinfo
+from datetime import UTC, datetime, timedelta, tzinfo
+import logging
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -58,11 +59,16 @@ _STATUS_MAP: dict[str, ParcelStatus] = {
     "LAST_MILE_INTERCEPT": ParcelStatus.UNKNOWN,
     "ORIGIN_HANDLING": ParcelStatus.IN_TRANSIT,
     "50001": ParcelStatus.REGISTERED,
-    "52001": ParcelStatus.IN_TRANSIT, "52002": ParcelStatus.IN_TRANSIT,
-    "57101": ParcelStatus.IN_TRANSIT, "57102": ParcelStatus.IN_TRANSIT,
-    "57104": ParcelStatus.IN_TRANSIT, "57110": ParcelStatus.IN_TRANSIT,
-    "57112": ParcelStatus.IN_TRANSIT, "57113": ParcelStatus.IN_TRANSIT,
-    "57201": ParcelStatus.DELIVERED, "57609": ParcelStatus.PROBLEM,
+    "52001": ParcelStatus.IN_TRANSIT,
+    "52002": ParcelStatus.IN_TRANSIT,
+    "57101": ParcelStatus.IN_TRANSIT,
+    "57102": ParcelStatus.IN_TRANSIT,
+    "57104": ParcelStatus.IN_TRANSIT,
+    "57110": ParcelStatus.IN_TRANSIT,
+    "57112": ParcelStatus.IN_TRANSIT,
+    "57113": ParcelStatus.IN_TRANSIT,
+    "57201": ParcelStatus.DELIVERED,
+    "57609": ParcelStatus.PROBLEM,
     "57406": ParcelStatus.UNKNOWN,
     # Confirmed live 2026-10-17, each by its own event text. A delay is still
     # movement, matching the rest of the suite; a failed attempt, a void
@@ -119,7 +125,9 @@ def _warn_timestamp_shape(event: dict) -> None:
     )
 
 
-def _warn_status_disagreement(json_status: ParcelStatus, ssr_status: ParcelStatus) -> None:
+def _warn_status_disagreement(
+    json_status: ParcelStatus, ssr_status: ParcelStatus
+) -> None:
     """Warn once when the JSON current scan disagrees with the SSR history."""
     _warn_once(
         "status-disagreement",
@@ -188,11 +196,11 @@ def parse_iso(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
-        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(str(value))
     except ValueError:
         return None
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
     return parsed
 
 
@@ -208,7 +216,7 @@ def to_iso_timestamp(value: Any) -> str | None:
         return None
     if isinstance(value, (int, float)):
         try:
-            return datetime.fromtimestamp(value / 1000, tz=timezone.utc).isoformat()
+            return datetime.fromtimestamp(value / 1000, tz=UTC).isoformat()
         except (OverflowError, OSError, ValueError):
             return None
     return str(value)
@@ -283,7 +291,7 @@ def _event_timestamp(
         _warn_timestamp_shape(event)
         return None
     try:
-        wall = datetime.fromisoformat(local_ts.replace("Z", "+00:00"))
+        wall = datetime.fromisoformat(local_ts)
     except ValueError:
         _warn_timestamp_shape(event)
         return None
@@ -296,7 +304,7 @@ def _event_timestamp(
     first, second = wall.replace(tzinfo=zone, fold=0), wall.replace(tzinfo=zone, fold=1)
     if first.utcoffset() != second.utcoffset():
         return None
-    if first.astimezone(timezone.utc).astimezone(zone).replace(tzinfo=None) != wall:
+    if first.astimezone(UTC).astimezone(zone).replace(tzinfo=None) != wall:
         _warn_timestamp_shape(event)
         return None
     return first.isoformat()
@@ -304,7 +312,10 @@ def _event_timestamp(
 
 def _event_status(event: dict) -> ParcelStatus | None:
     category = event.get("category")
-    if category == "LAST_MILE_ENROUTE" and "out for delivery" in str(event.get("eventDescription", "")).lower():
+    if (
+        category == "LAST_MILE_ENROUTE"
+        and "out for delivery" in str(event.get("eventDescription", "")).lower()
+    ):
         return ParcelStatus.OUT_FOR_DELIVERY
     return map_event_status(str(category or event.get("eventCode") or "") or None)
 
@@ -328,7 +339,12 @@ def build_history(
     for event in events or []:
         if not isinstance(event, dict):
             continue
-        identity = (event.get("eventCode"), event.get("localTs"), event.get("category"), event.get("eventDescription"))
+        identity = (
+            event.get("eventCode"),
+            event.get("localTs"),
+            event.get("category"),
+            event.get("eventDescription"),
+        )
         if identity in identities:
             continue
         identities.add(identity)
@@ -384,7 +400,9 @@ def normalize_parcel(
     status = _event_status(newest) or ParcelStatus.UNKNOWN
     delivered = status is ParcelStatus.DELIVERED
 
-    delivered_at = _event_timestamp(newest, zones) if status is ParcelStatus.DELIVERED else None
+    delivered_at = (
+        _event_timestamp(newest, zones) if status is ParcelStatus.DELIVERED else None
+    )
 
     current = raw.get("current") if isinstance(raw.get("current"), dict) else None
     if raw.get("source") == "ssr" and current is not None:
@@ -448,14 +466,12 @@ def apply_delivered_filter(parcels: list[dict], entry: ConfigEntry) -> list[dict
     shows.
     """
     options = entry.options
-    filter_type = options.get(
-        CONF_DELIVERED_FILTER_TYPE, DEFAULT_DELIVERED_FILTER_TYPE
-    )
+    filter_type = options.get(CONF_DELIVERED_FILTER_TYPE, DEFAULT_DELIVERED_FILTER_TYPE)
     amount = int(
         options.get(CONF_DELIVERED_FILTER_AMOUNT, DEFAULT_DELIVERED_FILTER_AMOUNT)
     )
     if filter_type == "days":
-        cutoff = datetime.now(timezone.utc) - timedelta(days=amount)
+        cutoff = datetime.now(UTC) - timedelta(days=amount)
         return [
             parcel
             for parcel in parcels
