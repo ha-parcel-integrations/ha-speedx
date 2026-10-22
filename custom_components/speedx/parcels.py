@@ -393,7 +393,8 @@ def normalize_parcel(
       :func:`format_dimensions`).
     * ``history`` is ``None`` when the option is off — the key still exists.
     """
-    events = raw.get("events") if isinstance(raw.get("events"), list) else []
+    raw_events = raw.get("events")
+    events = raw_events if isinstance(raw_events, list) else []
     newest = next((event for event in events if isinstance(event, dict)), {})
     tracking_code = raw.get("trackingNumber")
     status_code = newest.get("eventCode")
