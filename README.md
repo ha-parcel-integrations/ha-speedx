@@ -180,7 +180,7 @@ logger:
 ## Troubleshooting
 
 - **A parcel shows `unknown`** — SpeedX has not scanned it yet (their API answers `not_found` until the first scan), or the code is wrong. It will pick up automatically once scanned.
-- **A status logs "Unrecognised SpeedX status"** — please [open an issue](https://github.com/ha-parcel-integrations/ha-speedx/issues/new) with the logged line so the mapping can be extended.
+- **A status logs "Unrecognised SpeedX status"** — please [open an issue](https://github.com/ha-parcel-integrations/ha-speedx/issues/new?template=unrecognised_status.yml) with the logged line so the mapping can be extended.
 
 ## Related integrations
 
