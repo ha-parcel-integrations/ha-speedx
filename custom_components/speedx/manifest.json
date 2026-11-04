@@ -1,6 +1,7 @@
 {
   "domain": "speedx",
   "name": "SpeedX",
+  "categories": ["productivity_information"],
   "codeowners": [
     "@peter-mdf"
   ],
