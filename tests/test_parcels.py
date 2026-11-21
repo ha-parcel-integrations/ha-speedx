@@ -97,15 +97,13 @@ def test_iana_timestamp_and_dst_fail_safely():
     assert build_history([invalid_zone])[0]["timestamp"] is None
 
 
-def test_normalization_uses_category_and_redacts_carrier_pii():
+def test_normalization_uses_category_and_keeps_the_full_raw_record():
     parcel = normalize_parcel(delivered_sample(), include_history=True)
     assert parcel["status"] is ParcelStatus.DELIVERED
     assert parcel["delivered_at"].endswith("-04:00")
     assert parcel["sender"] is parcel["receiver"] is parcel["pickup_point"] is None
     assert parcel["weight"] is parcel["dimensions"] is None
-    assert parcel["raw"] == {"eventCode": "57201", "category": "LAST_MILE_DELIVERED"}
-    assert "location" not in str(parcel)
-    assert "Invented City" not in str(parcel)
+    assert parcel["raw"] == delivered_sample()
     assert frozenset({"url", "history"}) == CAPABILITIES
 
 

@@ -53,7 +53,7 @@ CAPABILITIES = frozenset({"url", "history"})
 
 # Fields not confirmed yet — the docs site shows them as "awaiting data".
 # Move a field into the declaration above once a real parcel shows it.
-PENDING_CAPABILITIES = frozenset({"delivery_window"})
+PENDING_CAPABILITIES = frozenset({"delivery_window", "pickup_point"})
 
 # If this carrier ever grows a second backend with a genuinely different
 # payload shape (a country-specific API, not just a config option) — the way

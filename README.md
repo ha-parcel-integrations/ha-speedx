@@ -35,7 +35,7 @@ A custom Home Assistant integration that tracks your [SpeedX](https://tracking.s
 
 - Track any number of SpeedX parcels by tracking code — no account needed
 - Per-parcel sensor with canonical status, a delivery timestamp when confirmed, and a tracking deep-link
-- Summary sensors: incoming parcels, next delivery, recently delivered parcels
+- Summary sensors: incoming parcels, next delivery, en route to pickup point, awaiting pickup, recently delivered parcels
 - Read-only **Deliveries** calendar with the expected delivery windows
 - `speedx.track_parcel` / `speedx.untrack_parcel` services, so a dashboard button can add a parcel
 - Events + device triggers for no-code automations (parcel registered, status changed, delivered, delivery time changed)
@@ -114,6 +114,8 @@ Standard HA removal applies: **Settings → Devices & Services → SpeedX → �
 | `sensor.speedx_incoming_parcels` | Number of active tracked parcels, full list under the `parcels` attribute |
 | `sensor.speedx_parcel_<code>` | One per tracked parcel; state is the canonical status, attributes carry the full normalised parcel |
 | `sensor.speedx_next_delivery` | Earliest expected delivery moment across all active parcels |
+| `sensor.speedx_en_route_to_pickup_point` | Active parcels still on their way to a pickup point (reads 0 until SpeedX reports a pickup-point route) |
+| `sensor.speedx_awaiting_pickup` | Parcels ready to collect at a pickup point (reads 0 until SpeedX reports one) |
 | `sensor.speedx_delivered_parcels` | Recently delivered parcels (see the retention option) |
 | `sensor.speedx_last_successful_update` | Diagnostic: when SpeedX was last polled successfully |
 
@@ -136,7 +138,7 @@ The `status` field is the carrier-agnostic enum shared by the whole integration 
 | `problem` | SpeedX reports an exception |
 | `unknown` | Not yet scanned, or a status we have not mapped yet |
 
-`raw_status` contains SpeedX's event code. Event prose and location data are deliberately not exposed.
+`raw_status` contains SpeedX's event code. Event prose and location data are redacted from diagnostics.
 
 ## Events
 

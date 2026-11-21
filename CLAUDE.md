@@ -40,12 +40,23 @@ This repo follows it exactly.
 
 ## Carrier-specific notes
 
-**No `awaiting_pickup` sensor yet — unconfirmed, not structural.** No
-pickup-point status/code has been observed for SpeedX; `status_vocab` is only
-`partial` in carrier-research's `speedx.md`, and `pickup`/`pickup_point`
-stay `False`/`None` in `parcels.py`. That is "unseen so far," not "cannot
-happen" — revisit once a real parcel or a fuller code capture settles it.
-See `.github/CONVENTIONS.md`'s pickup-point convention.
+**Pickup.** Both `awaiting_pickup` and `en_route_to_pickup_point` are exposed
+(they read 0 until a pickup parcel appears). `pickup` is
+`is_pickup(None, status, event_statuses)`, so it only turns true once an event
+maps to `AT_PICKUP_POINT`; `pickup_point` stays `None` because no real pickup
+point name has been seen. **Pending:** no pickup-point status or code has been
+observed yet, so no code maps to `AT_PICKUP_POINT`; once a real parcel shows
+one, map it in `map_event_status`, and move `pickup_point` into `CAPABILITIES`
+when a real name appears.
+
+`raw` is the full record (the tracking payload as fetched, including events
+with locations and free text); `_unrecorded_attributes` keeps it out of the
+recorder and diagnostics redact it.
+
+**Delivery window.** SpeedX's `edd` is unconfirmed and withheld, so
+`planned_from` / `planned_to` stay `None` (`delivery_window` is pending). The
+shared window helpers are in `parcels.py` for when it is confirmed; a date or
+moment must then go through `planned_window` with the parcel's own zone.
 
 SpeedX uses anonymous, direct HTTP consumer tracking; no credentials or browser
 automation are used. A refresh requests the JSON current scan and then the
@@ -54,9 +65,8 @@ scan is only a current-state fallback. Empty responses and parsing failures are
 retryable carrier failures, so cached parcel state stays visible.
 
 Locations, postcodes, descriptions, supplemental event text, timestamps and
-EDD are redacted from diagnostics and never included in `raw`. ETA, pickup,
-sender/receiver, weight and dimensions stay `None` until verified. Mechanics
-are recorded privately in `carrier-research/speedx/api/`.
+EDD are redacted from diagnostics. ETA, pickup point,
+sender/receiver, weight and dimensions stay `None` until verified.
 
 **Pre-1.0 WARNING obligations** (`parcels.py`'s `_warn_once`/`_warned`; `api.py`
 keeps its own separate pair of the same idiom): an unmapped status/category
@@ -85,5 +95,4 @@ python -m pytest tests/ --cov=custom_components.speedx
 
 Coverage must stay **above 95%** (silver `test-coverage` rule). Run before
 committing. A code change updates the README + this file + `docs/` in the same
-commit; the API reference lives in this carrier's own directory in the private
-`carrier-research/<slug>/api/`, never in this repo.
+commit.
