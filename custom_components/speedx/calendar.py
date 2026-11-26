@@ -83,8 +83,11 @@ class SpeedXDeliveriesCalendar(CoordinatorEntity[SpeedXCoordinator], CalendarEnt
                 event_start, event_end = days
 
             barcode = parcel.get("barcode") or ""
-            sender = parcel.get("sender")
-            summary = sender or (f"Parcel {barcode}" if barcode else "SpeedX parcel")
+            summary = (
+                parcel.get("contents")
+                or parcel.get("sender")
+                or (f"Parcel {barcode}" if barcode else "SpeedX parcel")
+            )
             description_parts = [
                 f"Barcode: {barcode}" if barcode else None,
                 f"Status: {parcel.get('status')}" if parcel.get("status") else None,

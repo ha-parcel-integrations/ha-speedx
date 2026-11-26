@@ -102,6 +102,7 @@ def test_normalization_uses_category_and_keeps_the_full_raw_record():
     assert parcel["status"] is ParcelStatus.DELIVERED
     assert parcel["delivered_at"].endswith("-04:00")
     assert parcel["sender"] is parcel["receiver"] is parcel["pickup_point"] is None
+    assert parcel["contents"] is None
     assert parcel["weight"] is parcel["dimensions"] is None
     assert parcel["raw"] == delivered_sample()
     assert frozenset({"url", "history"}) == CAPABILITIES

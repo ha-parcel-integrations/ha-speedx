@@ -51,6 +51,16 @@ def test_event_returns_earliest_upcoming():
     assert event.summary == "Example Sender"
 
 
+def test_event_title_prefers_contents_then_sender_then_fallback():
+    soon = "2099-01-01T10:00:00Z"
+    with_contents = {**_parcel("A", planned_from=soon), "contents": "Running shoes"}
+    assert _cal([with_contents]).event.summary == "Running shoes"
+    no_sender = {**_parcel("A", planned_from=soon), "sender": None}
+    assert _cal([no_sender]).event.summary == "Parcel A"
+    nothing = {**no_sender, "barcode": ""}
+    assert _cal([nothing]).event.summary == "SpeedX parcel"
+
+
 def test_event_none_when_no_planned():
     assert _cal([_parcel("A")]).event is None
 
